@@ -166,6 +166,36 @@ const dateTime = {
         const minutes = Math.floor((diff % 3600000) / 60000);
 
         return `${hours}j ${minutes}m`;
+    },
+
+    normalizeTime(val) {
+        if (!val) return '09:00';
+        
+        let str = String(val).trim();
+        
+        // Handle "h:mm" or "hh:mm" format
+        const timeMatch = str.match(/^(\d{1,2}):(\d{2})$/);
+        if (timeMatch) {
+            const h = timeMatch[1].padStart(2, '0');
+            const m = timeMatch[2];
+            return `${h}:${m}`;
+        }
+
+        // ISO date string from Sheets - extract time portion based on timezone offset
+        if (str.includes('T') || str.includes('1899')) {
+            try {
+                const d = new Date(str);
+                // Google Sheets stores time as a date in 1899 with UTC offset
+                // We need to get the time in the original timezone (Asia/Jakarta UTC+7)
+                let hours = d.getUTCHours() + 7;
+                const mins = String(d.getUTCMinutes()).padStart(2, '0');
+                const h = (hours % 24 + 24) % 24; // Ensure positive modulo
+                return String(h).padStart(2, '0') + ':' + mins;
+            } catch (e) {
+                return '09:00';
+            }
+        }
+        return str;
     }
 };
 
