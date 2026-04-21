@@ -12,6 +12,7 @@ const adminEmployees = {
         department: '',
         status: ''
     },
+    shifts: [],
 
     async init() {
         if (!auth.isAdmin()) {
@@ -20,11 +21,26 @@ const adminEmployees = {
             return;
         }
 
-        await this.loadEmployees();
+        await Promise.all([
+            this.loadEmployees(),
+            this.loadShifts()
+        ]);
+
         this.bindEvents();
         this.renderTable();
         this.renderMobileCards();
         this.updatePaginationInfo();
+        this.populateShiftDropdown();
+    },
+
+    async loadShifts() {
+        try {
+            const result = await api.getShifts();
+            this.shifts = result.data || [];
+        } catch (error) {
+            console.error('Error loading shifts:', error);
+            this.shifts = storage.get('shifts', []);
+        }
     },
 
     async loadEmployees() {
@@ -293,8 +309,42 @@ const adminEmployees = {
     showAddModal() {
         const modal = document.getElementById('modal-add-employee');
         if (modal) {
+            this.populateShiftDropdown();
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+        }
+    },
+
+    populateShiftDropdown() {
+        const shiftSelect = document.getElementById('emp-shift');
+        if (shiftSelect) {
+            const currentValue = shiftSelect.value;
+            shiftSelect.innerHTML = '<option value="">Pilih Shift</option>';
+
+            this.shifts.forEach(shift => {
+                const option = document.createElement('option');
+                option.value = shift.name;
+                // Normalize time for display
+                const startTime = dateTime.normalizeTime(shift.startTime);
+                const endTime = dateTime.normalizeTime(shift.endTime);
+                option.textContent = `${shift.name} (${startTime}-${endTime})`;
+                shiftSelect.appendChild(option);
+            });
+
+            // Add custom shifts if any employee has a shift not in the list
+            this.employees.forEach(emp => {
+                if (emp.shift && !this.shifts.find(s => s.name === emp.shift)) {
+                    const existingOptions = Array.from(shiftSelect.options).map(opt => opt.value);
+                    if (!existingOptions.includes(emp.shift)) {
+                        const option = document.createElement('option');
+                        option.value = emp.shift;
+                        option.textContent = emp.shift;
+                        shiftSelect.appendChild(option);
+                    }
+                }
+            });
+
+            if (currentValue) shiftSelect.value = currentValue;
         }
     },
 
