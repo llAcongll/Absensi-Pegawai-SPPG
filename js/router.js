@@ -51,10 +51,16 @@ const router = {
             absensi: 'Absensi',
             jurnal: 'Jurnal Kerja',
             cuti: 'Pengajuan Cuti',
+            izin: 'Izin',
+            'face-recognition': 'Face Recognition',
+            'admin-dashboard': 'Admin Dashboard',
+            employees: 'Data Karyawan',
+            'attendance-reports': 'Laporan Absensi',
+            'jurnal-reports': 'Laporan Jurnal',
+            'leave-reports': 'Laporan Cuti',
             'shift-schedule': 'Jadwal Shift',
             settings: 'Settings'
         };
-        
         const company = storage.get('company', { name: 'Portal Karyawan' });
         document.title = `${titles[page]} - ${company.name}`;
         
