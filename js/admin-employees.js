@@ -421,14 +421,15 @@ const adminEmployees = {
             }
         }
 
-        // Update datalist in modal
-        const deptList = document.getElementById('dept-list');
-        if (deptList) {
-            const existingOptions = Array.from(deptList.options).map(opt => opt.value);
+        // Update select in modal
+        const empDeptSelect = document.getElementById('emp-department');
+        if (empDeptSelect) {
+            const existingOptions = Array.from(empDeptSelect.options).map(opt => opt.value);
             if (!existingOptions.includes(newDept)) {
                 const option = document.createElement('option');
                 option.value = newDept;
-                deptList.appendChild(option);
+                option.textContent = newDept;
+                empDeptSelect.appendChild(option);
             }
         }
     },
