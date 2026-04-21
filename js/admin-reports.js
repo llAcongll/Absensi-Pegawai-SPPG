@@ -146,7 +146,7 @@ const adminReports = {
         this.leaveData = [
             ...leaves.map(l => ({
                 name: l.typeLabel === 'Cuti Tahunan' ? 'Budi Santoso' : 'Citra Dewi',
-                department: l.typeLabel === 'Cuti Tahunan' ? 'HR' : 'Finance',
+                department: l.typeLabel === 'Cuti Tahunan' ? 'Kitchen' : 'Packing/Pemorsian',
                 type: l.type === 'annual' ? 'Cuti' : l.type,
                 dates: l.startDate === l.endDate ? l.startDate : `${l.startDate} - ${l.endDate}`,
                 duration: l.duration,
@@ -155,7 +155,7 @@ const adminReports = {
             })),
             ...izinList.map(i => ({
                 name: 'Dedi Pratama',
-                department: 'Marketing',
+                department: 'Driver',
                 type: 'Izin',
                 dates: i.date,
                 duration: i.duration,
