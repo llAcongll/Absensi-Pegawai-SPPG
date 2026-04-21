@@ -29,8 +29,8 @@ const settings = {
             // Fix shift times - Google Sheets converts "08:00" to Date objects
             this.shifts = (shiftsResult.data || []).map(shift => ({
                 ...shift,
-                startTime: this.normalizeTime(shift.startTime),
-                endTime: this.normalizeTime(shift.endTime)
+                startTime: dateTime.normalizeTime(shift.startTime),
+                endTime: dateTime.normalizeTime(shift.endTime)
             }));
 
             const allSettings = settingsResult.data || {};
@@ -75,32 +75,6 @@ const settings = {
         }
     },
 
-    /**
-     * Normalize time values from Google Sheets.
-     * Sheets converts "08:00" to a Date (e.g. "1899-12-30T01:00:00.000Z").
-     * This extracts HH:mm from whatever format we get.
-     */
-    normalizeTime(val) {
-        if (!val) return '09:00';
-        const str = String(val);
-        // Already HH:mm format
-        if (/^\d{2}:\d{2}$/.test(str)) return str;
-        // ISO date string from Sheets - extract time portion based on timezone offset
-        if (str.includes('T') || str.includes('1899')) {
-            try {
-                const d = new Date(str);
-                // Google Sheets stores time as a date in 1899 with UTC offset
-                // We need to get the time in the original timezone (Asia/Jakarta UTC+7)
-                const hours = String(d.getUTCHours() + 7).padStart(2, '0');
-                const mins = String(d.getUTCMinutes()).padStart(2, '0');
-                const h = parseInt(hours) % 24;
-                return String(h).padStart(2, '0') + ':' + mins;
-            } catch (e) {
-                return '09:00';
-            }
-        }
-        return str;
-    },
 
     initForms() {
         // Company form
