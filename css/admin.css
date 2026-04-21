@@ -724,7 +724,7 @@
     box-shadow: var(--shadow-lg);
 }
 
-/* Shift Items in Settings */
+/* Temporarily commented out to fix UI
 .shift-item {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr auto;
@@ -782,3 +782,4 @@
         gap: var(--spacing-sm);
     }
 }
+*/
