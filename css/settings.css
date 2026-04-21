@@ -1,274 +1,286 @@
-/* ============================================
-   PORTAL KARYAWAN - SETTINGS STYLES
-   ============================================ */
+/**
+ * Portal Karyawan - Settings
+ * Admin settings functionality
+ */
 
-.settings-container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
+const settings = {
+    shifts: [],
 
-/* Header */
-.settings-header {
-    margin-bottom: var(--spacing-lg);
-}
+    async init() {
+        // Check if admin
+        if (!auth.isAdmin()) {
+            toast.error('Anda tidak memiliki akses ke halaman ini!');
+            router.navigate('dashboard');
+            return;
+        }
 
-.settings-header h2 {
-    font-size: var(--font-size-xl);
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: var(--spacing-xs);
-}
+        await this.loadSettings();
+        this.initForms();
+        this.renderShifts();
+    },
 
-.settings-header p {
-    color: var(--text-secondary);
-}
+    async loadSettings() {
+        try {
+            const [settingsResult, shiftsResult] = await Promise.all([
+                api.getSettings(),
+                api.getShifts()
+            ]);
 
-/* Grid Layout */
-.settings-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-md);
-}
+            // Fix shift times - Google Sheets converts "08:00" to Date objects
+            this.shifts = (shiftsResult.data || []).map(shift => ({
+                ...shift,
+                startTime: dateTime.normalizeTime(shift.startTime),
+                endTime: dateTime.normalizeTime(shift.endTime)
+            }));
 
-/* Settings Card */
-.settings-card {
-    background: var(--bg-secondary);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow);
-}
+            const allSettings = settingsResult.data || {};
 
-.settings-card.shift-settings {
-    grid-column: span 2;
-}
+            // Company info
+            const companyName = document.getElementById('company-name');
+            const companyLogo = document.getElementById('company-logo');
+            if (companyName) companyName.value = allSettings.company_name || '';
+            if (companyLogo) companyLogo.value = allSettings.company_logo || '';
 
-.settings-form {
-    padding: var(--spacing-md);
-}
+            // Working days
+            const workdays = allSettings.working_days ? JSON.parse(allSettings.working_days) : null;
+            if (workdays) {
+                const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+                days.forEach(day => {
+                    const el = document.getElementById(`day-${day}`);
+                    if (el) el.checked = workdays[day] !== false;
+                });
+            }
 
-/* Shifts List */
-.shifts-list {
-    padding: var(--spacing-md);
-}
+            // System settings
+            if (allSettings.late_tolerance !== undefined) {
+                const el = document.getElementById('setting-late-tolerance');
+                if (el) el.value = allSettings.late_tolerance;
+            }
+            if (allSettings.face_recognition !== undefined) {
+                const el = document.getElementById('setting-face-recognition');
+                if (el) el.checked = allSettings.face_recognition === 'true' || allSettings.face_recognition === true;
+            }
+            if (allSettings.location_tracking !== undefined) {
+                const el = document.getElementById('setting-location-tracking');
+                if (el) el.checked = allSettings.location_tracking === 'true' || allSettings.location_tracking === true;
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            this.shifts = storage.get('shifts', []);
+            const company = storage.get('company', { name: '', logo: '' });
+            const companyName = document.getElementById('company-name');
+            const companyLogo = document.getElementById('company-logo');
+            if (companyName) companyName.value = company.name;
+            if (companyLogo) companyLogo.value = company.logo;
+        }
+    },
 
-.shift-item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing);
-    padding: var(--spacing);
-    background: var(--color-gray-50);
-    border-radius: var(--border-radius);
-    margin-bottom: var(--spacing);
-}
 
-.shift-item:last-child {
-    margin-bottom: 0;
-}
+    initForms() {
+        // Company form
+        const companyForm = document.getElementById('company-form');
+        if (companyForm) {
+            companyForm.addEventListener('submit', (e) => this.saveCompany(e));
+        }
 
-.shift-input-group {
-    flex: 1;
-}
+        // Add shift button
+        const addShiftBtn = document.getElementById('btn-add-shift');
+        if (addShiftBtn) {
+            addShiftBtn.addEventListener('click', () => this.addShift());
+        }
 
-.shift-input-group label {
-    display: block;
-    font-size: var(--font-size-xs);
-    color: var(--text-muted);
-    margin-bottom: 2px;
-}
+        // Save working days
+        const saveWorkdaysBtn = document.getElementById('btn-save-workdays');
+        if (saveWorkdaysBtn) {
+            saveWorkdaysBtn.addEventListener('click', () => this.saveWorkdays());
+        }
 
-.shift-input-group input {
-    width: 100%;
-    padding: var(--spacing-xs) var(--spacing);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-sm);
-}
+        // Save system settings
+        const saveSystemBtn = document.getElementById('btn-save-system');
+        if (saveSystemBtn) {
+            saveSystemBtn.addEventListener('click', () => this.saveSystemSettings());
+        }
+    },
 
-.shift-input-group input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-}
+    async saveCompany(e) {
+        e.preventDefault();
 
-.btn-delete-shift {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--border-radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-danger);
-    background: rgba(239, 68, 68, 0.1);
-    transition: all var(--transition-fast);
-}
+        const name = document.getElementById('company-name').value;
+        const logo = document.getElementById('company-logo').value;
 
-.btn-delete-shift:hover {
-    background: var(--color-danger);
-    color: var(--color-white);
-}
+        try {
+            await Promise.all([
+                api.saveSetting('company_name', name),
+                api.saveSetting('company_logo', logo)
+            ]);
+            // Also update localStorage for immediate UI update
+            storage.set('company', { name, logo });
+            updateCompanyUI();
+            toast.success('Informasi perusahaan berhasil disimpan!');
+        } catch (error) {
+            console.error('Error saving company:', error);
+            toast.error('Gagal menyimpan');
+        }
+    },
 
-/* Working Days */
-.working-days {
-    padding: var(--spacing-md);
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--spacing);
-}
+    async saveWorkdays() {
+        const days = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+        const workdays = {};
+        days.forEach(day => {
+            const el = document.getElementById(`day-${day}`);
+            workdays[day] = el ? el.checked : false;
+        });
 
-.day-checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    cursor: pointer;
-    padding: var(--spacing);
-    border-radius: var(--border-radius);
-    background: var(--color-gray-50);
-    transition: all var(--transition-fast);
-}
+        try {
+            await api.saveSetting('working_days', JSON.stringify(workdays));
+            toast.success('Hari kerja berhasil disimpan!');
+        } catch (error) {
+            console.error('Error saving workdays:', error);
+            toast.error('Gagal menyimpan hari kerja');
+        }
+    },
 
-.day-checkbox:hover {
-    background: var(--color-gray-100);
-}
+    async saveSystemSettings() {
+        const lateTolerance = document.getElementById('setting-late-tolerance');
+        const faceRecognition = document.getElementById('setting-face-recognition');
+        const locationTracking = document.getElementById('setting-location-tracking');
 
-.day-checkbox input {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--color-primary);
-    cursor: pointer;
-}
+        try {
+            await Promise.all([
+                api.saveSetting('late_tolerance', lateTolerance ? lateTolerance.value : '15'),
+                api.saveSetting('face_recognition', faceRecognition ? String(faceRecognition.checked) : 'true'),
+                api.saveSetting('location_tracking', locationTracking ? String(locationTracking.checked) : 'true')
+            ]);
+            toast.success('Pengaturan sistem berhasil disimpan!');
+        } catch (error) {
+            console.error('Error saving system settings:', error);
+            toast.error('Gagal menyimpan pengaturan sistem');
+        }
+    },
 
-.day-label {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-}
+    renderShifts() {
+        const container = document.getElementById('shifts-list');
+        if (!container) return;
 
-.day-checkbox input:checked + .day-label {
-    color: var(--text-primary);
-    font-weight: 500;
-}
+        if (this.shifts.length === 0) {
+            container.innerHTML = '<p class="empty-state">Belum ada shift</p>';
+            return;
+        }
 
-/* System Settings */
-.system-settings {
-    padding: var(--spacing-md);
-}
+        container.innerHTML = this.shifts.map((shift, index) => `
+            <div class="shift-item" id="shift-item-${index}" data-index="${index}">
+                <div class="shift-input-group">
+                    <label>Nama Shift</label>
+                    <input type="text" value="${shift.name}" placeholder="Nama Shift" 
+                           onchange="settings.updateShift(${index}, 'name', this.value)">
+                </div>
+                <div class="shift-input-group">
+                    <label>Jam Masuk</label>
+                    <input type="time" value="${shift.startTime}" 
+                           onchange="settings.updateShift(${index}, 'startTime', this.value)">
+                </div>
+                <div class="shift-input-group">
+                    <label>Jam Pulang</label>
+                    <input type="time" value="${shift.endTime}" 
+                           onchange="settings.updateShift(${index}, 'endTime', this.value)">
+                </div>
+                <div class="shift-actions">
+                    <div class="shift-status" id="shift-status-${index}"></div>
+                    <button type="button" class="btn-delete-shift" onclick="settings.deleteShift(${index})" title="Hapus Shift">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    },
 
-.setting-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing) 0;
-    border-bottom: 1px solid var(--border-color);
-}
+    async addShift() {
+        const btn = document.getElementById('btn-add-shift');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Menambah...</span>';
+        }
 
-.setting-item:last-child {
-    border-bottom: none;
-}
+        const newShift = {
+            name: 'Shift Baru',
+            startTime: '09:00',
+            endTime: '18:00'
+        };
 
-.setting-info {
-    flex: 1;
-}
+        try {
+            const result = await api.addShift(newShift);
+            if (result.success) {
+                this.shifts.push(result.data);
+                this.renderShifts();
+                toast.success('Shift baru ditambahkan!');
+            } else {
+                toast.error(result.error || 'Gagal menambah shift');
+            }
+        } catch (error) {
+            console.error('Error adding shift:', error);
+            toast.error('Terjadi kesalahan jaringan');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i><span>Tambah Shift</span>';
+            }
+        }
+    },
 
-.setting-name {
-    display: block;
-    font-weight: 500;
-    color: var(--text-primary);
-    margin-bottom: 2px;
-}
+    async updateShift(index, field, value) {
+        if (this.shifts[index]) {
+            const oldValue = this.shifts[index][field];
+            this.shifts[index][field] = value;
+            
+            const statusEl = document.getElementById(`shift-status-${index}`);
+            if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
-.setting-desc {
-    display: block;
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
-}
+            try {
+                const result = await api.updateShift(this.shifts[index].id, { [field]: value });
+                if (result.success) {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<i class="fas fa-check-circle" style="color: var(--color-success)"></i>';
+                        setTimeout(() => { if (statusEl) statusEl.innerHTML = ''; }, 2000);
+                    }
+                } else {
+                    this.shifts[index][field] = oldValue;
+                    this.renderShifts();
+                    toast.error('Gagal memperbarui shift');
+                }
+            } catch (error) {
+                console.error('Error updating shift:', error);
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--color-danger)"></i>';
+                toast.error('Terjadi kesalahan jaringan');
+            }
+        }
+    },
 
-.setting-control input[type="number"] {
-    width: 80px;
-    padding: var(--spacing-xs) var(--spacing);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    text-align: center;
-}
+    async deleteShift(index) {
+        if (confirm('Apakah Anda yakin ingin menghapus shift ini?')) {
+            try {
+                const shiftId = this.shifts[index].id;
+                await api.deleteShift(shiftId);
+                this.shifts.splice(index, 1);
+                this.renderShifts();
+                toast.info('Shift dihapus');
+            } catch (error) {
+                console.error('Error deleting shift:', error);
+            }
+        }
+    },
 
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 26px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--color-gray-300);
-    transition: var(--transition-fast);
-    border-radius: 26px;
-}
-
-.toggle-slider::before {
-    position: absolute;
-    content: "";
-    height: 20px;
-    width: 20px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: var(--transition-fast);
-    border-radius: 50%;
-}
-
-.toggle-switch input:checked + .toggle-slider {
-    background-color: var(--color-primary);
-}
-
-.toggle-switch input:checked + .toggle-slider::before {
-    transform: translateX(24px);
-}
-
-/* Admin Only Indicator */
-.admin-only.visible {
-    display: block;
-}
-
-/* Responsive */
-@media (max-width: 992px) {
-    .settings-grid {
-        grid-template-columns: 1fr;
+    getShiftOptions() {
+        return this.shifts.map(shift => ({
+            value: shift.name,
+            label: `${shift.name} (${shift.startTime} - ${shift.endTime})`
+        }));
     }
-    
-    .settings-card.shift-settings {
-        grid-column: span 1;
-    }
-    
-    .shift-item {
-        flex-wrap: wrap;
-    }
-    
-    .shift-input-group {
-        min-width: calc(50% - var(--spacing));
-    }
-}
+};
 
-@media (max-width: 576px) {
-    .working-days {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .setting-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing);
-    }
-    
-    .shift-input-group {
-        min-width: 100%;
-    }
-}
+// Global init function
+window.initSettings = () => {
+    settings.init();
+};
+
+// Expose settings object
+window.settings = settings;
