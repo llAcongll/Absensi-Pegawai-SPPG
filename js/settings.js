@@ -176,12 +176,12 @@ const settings = {
                 </div>
                 <div class="shift-input-group">
                     <label>Jam Masuk</label>
-                    <input type="time" value="${shift.startTime}" 
+                    <input type="text" value="${shift.startTime}" placeholder="HH:MM"
                            onchange="settings.updateShift(${index}, 'startTime', this.value)">
                 </div>
                 <div class="shift-input-group">
                     <label>Jam Pulang</label>
-                    <input type="time" value="${shift.endTime}" 
+                    <input type="text" value="${shift.endTime}" placeholder="HH:MM"
                            onchange="settings.updateShift(${index}, 'endTime', this.value)">
                 </div>
                 <div class="shift-actions">
