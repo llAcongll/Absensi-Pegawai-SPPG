@@ -369,6 +369,9 @@ const adminEmployees = {
             // Reset date to today
             const joinDateInput = document.getElementById('emp-join-date');
             if (joinDateInput) joinDateInput.valueAsDate = new Date();
+            
+            const passwordInput = document.getElementById('emp-password');
+            if (passwordInput) passwordInput.value = '';
         }
 
         this.editingId = null;
@@ -384,6 +387,7 @@ const adminEmployees = {
         const shift = document.getElementById('emp-shift').value;
         const status = document.getElementById('emp-status').value;
         const joinDate = document.getElementById('emp-join-date').value;
+        const password = document.getElementById('emp-password').value;
 
         const employeeData = {
             name,
@@ -392,7 +396,8 @@ const adminEmployees = {
             position,
             shift,
             status,
-            joinDate
+            joinDate,
+            password
         };
 
         try {
