@@ -168,7 +168,7 @@ const settings = {
         }
 
         container.innerHTML = this.shifts.map((shift, index) => `
-            <div class="shift-item" data-index="${index}">
+            <div class="shift-item" id="shift-item-${index}" data-index="${index}">
                 <div class="shift-input-group">
                     <label>Nama Shift</label>
                     <input type="text" value="${shift.name}" placeholder="Nama Shift" 
@@ -184,14 +184,23 @@ const settings = {
                     <input type="time" value="${shift.endTime}" 
                            onchange="settings.updateShift(${index}, 'endTime', this.value)">
                 </div>
-                <button type="button" class="btn-delete-shift" onclick="settings.deleteShift(${index})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="shift-actions">
+                    <div class="shift-status" id="shift-status-${index}"></div>
+                    <button type="button" class="btn-delete-shift" onclick="settings.deleteShift(${index})" title="Hapus Shift">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `).join('');
     },
 
     async addShift() {
+        const btn = document.getElementById('btn-add-shift');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Menambah...</span>';
+        }
+
         const newShift = {
             name: 'Shift Baru',
             startTime: '09:00',
@@ -201,23 +210,62 @@ const settings = {
         try {
             const result = await api.addShift(newShift);
             if (result.success) {
-                this.shifts.push(result.data);
+                // Use result.data if available, otherwise use newShift with generated ID
+                const addedShift = result.data || { ...newShift, id: result.id || Date.now() };
+                this.shifts.push(addedShift);
                 this.renderShifts();
                 toast.success('Shift baru ditambahkan!');
+            } else {
+                toast.error(result.error || 'Gagal menambah shift');
             }
         } catch (error) {
             console.error('Error adding shift:', error);
+            toast.error('Terjadi kesalahan jaringan');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i><span>Tambah Shift</span>';
+            }
         }
     },
 
     async updateShift(index, field, value) {
         if (this.shifts[index]) {
-            this.shifts[index][field] = value;
+            const oldValue = this.shifts[index][field];
+            
+            // Normalize time if needed
+            let newValue = value;
+            if (field === 'startTime' || field === 'endTime') {
+                newValue = dateTime.normalizeTime(value);
+            }
+            
+            this.shifts[index][field] = newValue;
+
+            const statusEl = document.getElementById(`shift-status-${index}`);
+            if (statusEl) statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
             try {
-                await api.updateShift(this.shifts[index].id, { [field]: value });
-                toast.success('Shift berhasil diperbarui!');
+                // CRITICAL: Send entire shift object because some backends (like simple GAS scripts)
+                // might overwrite the entire row with the provided data.
+                const shiftData = { ...this.shifts[index] };
+                const result = await api.updateShift(shiftData.id, shiftData);
+                
+                if (result.success) {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<i class="fas fa-check-circle" style="color: var(--color-success)"></i>';
+                        setTimeout(() => { if (statusEl) statusEl.innerHTML = ''; }, 2000);
+                    }
+                } else {
+                    this.shifts[index][field] = oldValue;
+                    this.renderShifts();
+                    toast.error(result.error || 'Gagal memperbarui shift');
+                }
             } catch (error) {
                 console.error('Error updating shift:', error);
+                this.shifts[index][field] = oldValue;
+                this.renderShifts();
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--color-danger)"></i>';
+                toast.error('Terjadi kesalahan jaringan');
             }
         }
     },
