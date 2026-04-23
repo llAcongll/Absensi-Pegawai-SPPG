@@ -330,14 +330,17 @@
         left: 0;
         top: 0;
         height: 100vh;
-        transform: translateX(-100%);
-        z-index: 1000;
         width: 280px;
-        transition: transform 0.3s ease;
+        background: var(--bg-sidebar);
+        transform: translateX(-100%);
+        z-index: 2100; /* Higher than overlay and other modals */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 10px 0 25px rgba(0, 0, 0, 0.1);
+        display: flex !important; /* Ensure it's not hidden by display: none */
     }
     
     .sidebar.open {
-        transform: translateX(0);
+        transform: translateX(0) !important;
     }
     
     /* Overlay when sidebar is open */
@@ -347,9 +350,12 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px); /* This adds the nice blur effect */
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 2050; /* Below sidebar, but above main content */
         display: none;
+        animation: fadeIn 0.3s ease;
     }
     
     .sidebar-overlay.show {
