@@ -13,6 +13,7 @@ const adminEmployees = {
         status: ''
     },
     shifts: [],
+    editingId: null,
 
     async init() {
         if (!auth.isAdmin()) {
@@ -351,16 +352,26 @@ const adminEmployees = {
     hideAddModal() {
         const modal = document.getElementById('modal-add-employee');
         const form = document.getElementById('form-add-employee');
+        const modalTitle = modal ? modal.querySelector('h3') : null;
+        const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+
         if (modal) {
             modal.style.display = 'none';
             document.body.style.overflow = '';
         }
+
         if (form) {
             form.reset();
+            // Reset modal state
+            if (modalTitle) modalTitle.textContent = 'Tambah Karyawan Baru';
+            if (submitBtn) submitBtn.innerHTML = 'Simpan Karyawan';
+
             // Reset date to today
             const joinDateInput = document.getElementById('emp-join-date');
             if (joinDateInput) joinDateInput.valueAsDate = new Date();
         }
+
+        this.editingId = null;
     },
 
     async handleAddEmployee(e) {
@@ -381,29 +392,48 @@ const adminEmployees = {
             position,
             shift,
             status,
-            joinDate,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${this.getRandomColor()}&color=fff`
+            joinDate
         };
 
         try {
-            const result = await api.addEmployee(employeeData);
-            if (result.success) {
-                this.employees.unshift(result.data);
+            if (this.editingId) {
+                // Update mode
+                const result = await api.updateEmployee(this.editingId, employeeData);
+                if (result.success) {
+                    const idx = this.employees.findIndex(emp => emp.id === this.editingId);
+                    if (idx >= 0) {
+                        this.employees[idx] = { ...this.employees[idx], ...result.data };
+                    }
 
-                // Update dept filter options if new department
-                this.updateDeptFilterOptions(department);
+                    this.updateDeptFilterOptions(department);
+                    this.hideAddModal();
+                    this.renderTable();
+                    this.renderMobileCards();
 
-                this.hideAddModal();
-                this.renderTable();
-                this.renderMobileCards();
-                this.updatePaginationInfo();
-
-                toast.success(`Karyawan ${name} berhasil ditambahkan!`);
+                    toast.success(`Karyawan ${name} berhasil diperbarui!`);
+                } else {
+                    toast.error(result.error || 'Gagal memperbarui karyawan');
+                }
             } else {
-                toast.error(result.error || 'Gagal menambahkan karyawan');
+                // Create mode
+                employeeData.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${this.getRandomColor()}&color=fff`;
+                const result = await api.addEmployee(employeeData);
+                if (result.success) {
+                    this.employees.unshift(result.data);
+
+                    this.updateDeptFilterOptions(department);
+                    this.hideAddModal();
+                    this.renderTable();
+                    this.renderMobileCards();
+                    this.updatePaginationInfo();
+
+                    toast.success(`Karyawan ${name} berhasil ditambahkan!`);
+                } else {
+                    toast.error(result.error || 'Gagal menambahkan karyawan');
+                }
             }
         } catch (error) {
-            console.error('Error adding employee:', error);
+            console.error('Error saving employee:', error);
             toast.error('Terjadi kesalahan');
         }
     },
@@ -447,7 +477,35 @@ const adminEmployees = {
     },
 
     editEmployee(id) {
-        toast.info('Fitur edit karyawan akan segera hadir');
+        const emp = this.employees.find(e => e.id === id);
+        if (!emp) return;
+
+        this.editingId = id;
+
+        // Populate form
+        document.getElementById('emp-name').value = emp.name;
+        document.getElementById('emp-email').value = emp.email;
+        document.getElementById('emp-department').value = emp.department;
+        document.getElementById('emp-position').value = emp.position;
+        document.getElementById('emp-status').value = emp.status;
+        document.getElementById('emp-join-date').value = emp.joinDate;
+
+        // Show modal and setup
+        const modal = document.getElementById('modal-add-employee');
+        if (modal) {
+            const modalTitle = modal.querySelector('h3');
+            const submitBtn = modal.querySelector('button[type="submit"]');
+
+            if (modalTitle) modalTitle.textContent = 'Edit Karyawan';
+            if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Karyawan';
+
+            this.populateShiftDropdown();
+            // Set shift value after population
+            document.getElementById('emp-shift').value = emp.shift;
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
     },
 
     async deleteEmployee(id) {
