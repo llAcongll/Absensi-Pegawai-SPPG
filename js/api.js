@@ -315,31 +315,41 @@ const api = {
     },
 
     async addShift(data) {
+        if (!data.id) data.id = Date.now();
+        
+        // Always sync to localStorage as a cache
+        const all = storage.get('shifts', []);
+        all.push(data);
+        storage.set('shifts', all);
+
         if (!API_BASE_URL) {
-            const all = storage.get('shifts', []);
-            data.id = Date.now();
-            all.push(data);
-            storage.set('shifts', all);
             return { success: true, data: data };
         }
         return this.request('addShift', data);
     },
 
     async updateShift(id, data) {
+        // Always sync to localStorage as a cache
+        const all = storage.get('shifts', []);
+        const idx = all.findIndex(s => String(s.id) === String(id));
+        if (idx >= 0) { 
+            Object.assign(all[idx], data); 
+            storage.set('shifts', all); 
+        }
+
         if (!API_BASE_URL) {
-            const all = storage.get('shifts', []);
-            const idx = all.findIndex(s => s.id === id || s.id === Number(id));
-            if (idx >= 0) { Object.assign(all[idx], data); storage.set('shifts', all); }
-            return { success: true, data: all[idx] };
+            return { success: true, data: all[idx] || data };
         }
         return this.request('updateShift', { id, ...data });
     },
 
     async deleteShift(id) {
+        // Always sync to localStorage as a cache
+        let all = storage.get('shifts', []);
+        all = all.filter(s => String(s.id) !== String(id));
+        storage.set('shifts', all);
+
         if (!API_BASE_URL) {
-            let all = storage.get('shifts', []);
-            all = all.filter(s => s.id !== id && s.id !== Number(id));
-            storage.set('shifts', all);
             return { success: true, data: { id } };
         }
         return this.request('deleteShift', { id });
