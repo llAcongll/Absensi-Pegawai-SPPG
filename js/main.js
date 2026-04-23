@@ -170,11 +170,11 @@ const dateTime = {
 
     normalizeTime(val) {
         if (!val) return '09:00';
-        
+
         let str = String(val).trim();
-        
-        // Handle "h:mm" or "hh:mm" format
-        const timeMatch = str.match(/^(\d{1,2}):(\d{2})$/);
+
+        // Handle "h:mm", "hh:mm", "h.mm", "hh.mm" format
+        const timeMatch = str.match(/^(\d{1,2})[:.](\d{2})$/);
         if (timeMatch) {
             const h = timeMatch[1].padStart(2, '0');
             const m = timeMatch[2];
@@ -363,7 +363,8 @@ function initializeData() {
             { id: 3, name: 'Citra Dewi', email: 'citra@company.com', department: 'Prepare', position: 'Staf Prepare', shift: 'Pagi', status: 'on-leave', joinDate: '2024-03-10', avatar: 'https://ui-avatars.com/api/?name=Citra&background=F59E0B&color=fff' },
             { id: 4, name: 'Dedi Pratama', email: 'dedi@company.com', department: 'Driver', position: 'Logistik', shift: 'Siang', status: 'active', joinDate: '2024-02-20', avatar: 'https://ui-avatars.com/api/?name=Dedi&background=EF4444&color=fff' },
             { id: 5, name: 'Eka Putri', email: 'eka@company.com', department: 'Kitchen', position: 'Asisten Koki', shift: 'Pagi', status: 'active', joinDate: '2024-01-05', avatar: 'https://ui-avatars.com/api/?name=Eka&background=8B5CF6&color=fff' },
-            { id: 6, name: 'Fajar Nugraha', email: 'fajar@company.com', department: 'Security', position: 'Keamanan', shift: 'Malam', status: 'inactive', joinDate: '2023-09-12', avatar: 'https://ui-avatars.com/api/?name=Fajar&background=6B7280&color=fff' }
+            { id: 6, name: 'Fajar Nugraha', email: 'fajar@company.com', department: 'Security', position: 'Keamanan', shift: 'Malam', status: 'inactive', joinDate: '2023-09-12', avatar: 'https://ui-avatars.com/api/?name=Fajar&background=6B7280&color=fff' },
+            { id: 7, name: 'Siti Aminah', email: 'siti@company.com', department: 'Cleaning Service', position: 'Kebersihan', shift: 'Pagi', status: 'active', joinDate: '2024-04-01', avatar: 'https://ui-avatars.com/api/?name=Siti&background=14B8A6&color=fff' }
         ]);
     }
 }
