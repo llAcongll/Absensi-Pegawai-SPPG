@@ -308,14 +308,15 @@ const api = {
     // ========== SHIFTS ==========
 
     async getShifts() {
-        if (!API_BASE_URL) {
-            return { success: true, data: storage.get('shifts', []) };
+        const result = await this.request('getShifts');
+        if (result.success && Array.isArray(result.data)) {
+            storage.set('shifts', result.data);
         }
-        return this.request('getShifts');
+        return result;
     },
 
     async addShift(data) {
-        if (!data.id) data.id = Date.now();
+        if (!data.id) data.id = 'sh_' + Date.now(); // Prefix for clarity
         
         // Always sync to localStorage as a cache
         const all = storage.get('shifts', []);
@@ -325,7 +326,18 @@ const api = {
         if (!API_BASE_URL) {
             return { success: true, data: data };
         }
-        return this.request('addShift', data);
+        
+        const result = await this.request('addShift', data);
+        
+        // If server returns a new ID or data, update local storage
+        if (result.success && result.data) {
+            const updatedAll = storage.get('shifts', []).map(s => 
+                s.id === data.id ? { ...s, ...result.data } : s
+            );
+            storage.set('shifts', updatedAll);
+        }
+        
+        return result;
     },
 
     async updateShift(id, data) {
