@@ -181,13 +181,13 @@ const adminEmployees = {
                     </span>
                 </td>
                 <td>
-                    <button class="btn-action view" onclick="adminEmployees.viewEmployee(${emp.id})" title="Lihat">
+                    <button class="btn-action view" onclick="adminEmployees.viewEmployee('${emp.id}')" title="Lihat">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn-action edit" onclick="adminEmployees.editEmployee(${emp.id})" title="Edit">
+                    <button class="btn-action edit" onclick="adminEmployees.editEmployee('${emp.id}')" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-action delete" onclick="adminEmployees.deleteEmployee(${emp.id})" title="Hapus">
+                    <button class="btn-action delete" onclick="adminEmployees.deleteEmployee('${emp.id}')" title="Hapus">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -236,10 +236,10 @@ const adminEmployees = {
                     <span class="mobile-card-value">${emp.shift}</span>
                 </div>
                 <div style="margin-top: var(--spacing); display: flex; gap: var(--spacing-xs);">
-                    <button class="btn-action view" onclick="adminEmployees.viewEmployee(${emp.id})" style="flex: 1;">
+                    <button class="btn-action view" onclick="adminEmployees.viewEmployee('${emp.id}')" style="flex: 1;">
                         <i class="fas fa-eye"></i> Lihat
                     </button>
-                    <button class="btn-action edit" onclick="adminEmployees.editEmployee(${emp.id})" style="flex: 1;">
+                    <button class="btn-action edit" onclick="adminEmployees.editEmployee('${emp.id}')" style="flex: 1;">
                         <i class="fas fa-edit"></i> Edit
                     </button>
                 </div>
@@ -470,18 +470,23 @@ const adminEmployees = {
     },
 
     viewEmployee(id) {
-        const emp = this.employees.find(e => e.id === id);
+        const emp = this.employees.find(e => String(e.id) === String(id));
         if (emp) {
             alert(`Detail Karyawan:\n\nNama: ${emp.name}\nEmail: ${emp.email}\nDepartemen: ${emp.department}\nJabatan: ${emp.position}\nShift: ${emp.shift}\nStatus: ${this.getStatusLabel(emp.status)}\nBergabung: ${emp.joinDate}`);
+        } else {
+            console.warn('Employee not found for ID:', id);
         }
     },
 
     editEmployee(id) {
-        const emp = this.employees.find(e => e.id === id);
-        if (!emp) return;
+        const emp = this.employees.find(e => String(e.id) === String(id));
+        if (!emp) {
+            console.warn('Employee not found for editing:', id);
+            return;
+        }
 
-        this.editingId = id;
-
+        this.editingId = emp.id; // Keep the original type
+        
         // Populate form
         document.getElementById('emp-name').value = emp.name;
         document.getElementById('emp-email').value = emp.email;
@@ -489,20 +494,20 @@ const adminEmployees = {
         document.getElementById('emp-position').value = emp.position;
         document.getElementById('emp-status').value = emp.status;
         document.getElementById('emp-join-date').value = emp.joinDate;
-
+        
         // Show modal and setup
         const modal = document.getElementById('modal-add-employee');
         if (modal) {
             const modalTitle = modal.querySelector('h3');
             const submitBtn = modal.querySelector('button[type="submit"]');
-
+            
             if (modalTitle) modalTitle.textContent = 'Edit Karyawan';
             if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Karyawan';
-
+            
             this.populateShiftDropdown();
             // Set shift value after population
             document.getElementById('emp-shift').value = emp.shift;
-
+            
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -512,7 +517,7 @@ const adminEmployees = {
         if (confirm('Apakah Anda yakin ingin menghapus karyawan ini?')) {
             try {
                 await api.deleteEmployee(id);
-                this.employees = this.employees.filter(e => e.id !== id);
+                this.employees = this.employees.filter(e => String(e.id) !== String(id));
                 this.renderTable();
                 this.renderMobileCards();
                 this.updatePaginationInfo();
